@@ -126,3 +126,7 @@ export interface CommandExecution {
   promise: Promise<ToolResult>;
 }
 
+export interface AgentRunOptions {
+  signal?: AbortSignal;
+  onEvent?: (event: AgentEvent) => void;
+}

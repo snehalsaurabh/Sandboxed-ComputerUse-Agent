@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Sandboxed Local AI Agent</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="control-panel">
+        <div class="panel-block hero-block">
+          <p class="eyebrow">Phase 2 Desktop Shell</p>
+          <h1>Sandboxed Local AI Agent</h1>
+          <p class="hero-copy">
+            A local-first operator console for safe autonomous computer interaction.
+            It exposes the agent loop without hiding the safety boundaries that govern
+            it.
+          </p>
+          <div class="status-strip">
+            <span class="status-pill status-pill-live" id="run-status-pill">Idle</span>
+            <span class="status-pill">Single agent</span>
+            <span class="status-pill">CLI + filesystem</span>
+          </div>
+        </div>
+
+        <section class="panel-block task-block">
+          <div class="section-heading">
+            <p class="section-kicker">Task</p>
+            <h2>Start a bounded run</h2>
+          </div>
+
+          <label class="field">
+            <span>Goal</span>
+            <textarea
+              id="goal-input"
+              rows="6"
+              placeholder="Describe a task for the agent. Example: Create a TypeScript file that prints Hello World."
+            >Create a Python file that prints Hello World</textarea>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Provider</span>
+              <select id="provider-select">
+                <option value="mock">Mock provider</option>
+                <option value="ollama">Ollama</option>
+                <option value="openai-compatible">OpenAI-compatible</option>
+              </select>
+            </label>
+
+            <div class="field">
+              <span>Controls</span>
+              <div class="button-row">
+                <button class="button button-primary" id="start-button">Start run</button>
+                <button class="button button-secondary" id="stop-button" disabled>Stop</button>
+                <button class="button button-ghost" id="reset-button">Reset feed</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="inline-note" id="inline-note">
+            Use the mock provider for deterministic local testing. Cloud and local HTTP
+            providers can be swapped in later without changing the core loop.
+          </p>
+        </section>
+
+        <section class="panel-block info-block">
+          <div class="section-heading">
+            <p class="section-kicker">Operating Model</p>
+            <h2>What this app is showing</h2>
+          </div>
+
+          <ul class="plain-list">
+            <li>Each run emits structured thought, action, and observation events.</li>
+            <li>Execution remains bounded by a tool policy and step budget.</li>
+            <li>Local-first is the default, but provider selection is modular.</li>
+            <li>Browser automation is intentionally deferred to a later, isolated phase.</li>
+          </ul>
+        </section>
+
+        <section class="panel-block instructions-block">
+          <div class="section-heading">
+            <p class="section-kicker">How To Use</p>
+            <h2>Minimal workflow</h2>
+          </div>
+
+          <ol class="number-list">
+            <li>Enter a short, concrete goal.</li>
+            <li>Choose a provider mode.</li>
+            <li>Start the run and watch the timeline update.</li>
+            <li>Stop the run if you want to cut it short.</li>
+          </ol>
+        </section>
+      </aside>
+
+      <main class="feed-panel">
+        <section class="topbar">
+          <div>
+            <p class="section-kicker">Live Trace</p>
+            <h2>Execution feed</h2>
+          </div>
+          <div class="topbar-metrics">
+            <div class="metric-card">
+              <span class="metric-label">Events</span>
+              <strong id="events-count">0</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Steps</span>
+              <strong id="steps-count">0</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Last result</span>
+              <strong id="result-state">Idle</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="summary-card" id="summary-card">
+          <div class="summary-header">
+            <div>
+              <p class="section-kicker">Run Summary</p>
+              <h3 id="summary-title">No run has started yet</h3>
+            </div>
+            <span class="summary-badge" id="summary-badge">Idle</span>
+          </div>
+          <p id="summary-text">
+            The feed on the right will capture the agent's event stream once a run starts.
+          </p>
+        </section>
+
+        <section class="timeline" id="timeline">
+          <div class="empty-state" id="empty-state">
+            <p class="empty-title">Awaiting first task</p>
+            <p class="empty-copy">
+              This workspace is designed to make the agent's behavior legible. Every step
+              is recorded so you can inspect what the model attempted and what the sandbox
+              allowed.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="../dist/renderer.js"></script>
+  </body>
+</html>
+

@@ -64,8 +64,10 @@ async function main(): Promise<void> {
         ? path.resolve(options.workspaceRoot)
         : process.cwd()
     },
-    (event) => {
-      process.stdout.write(`${JSON.stringify(event)}\n`);
+    {
+      onEvent: (event) => {
+        process.stdout.write(`${JSON.stringify(event)}\n`);
+      }
     }
   );
 
@@ -77,4 +79,3 @@ main().catch((error: unknown) => {
   process.stderr.write(`${JSON.stringify({ type: "fatal", error: message })}\n`);
   process.exitCode = 1;
 });
-

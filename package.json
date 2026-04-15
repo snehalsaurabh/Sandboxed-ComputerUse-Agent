@@ -1,0 +1,23 @@
+{
+  "name": "sandboxed-local-ai-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "cli": "node --enable-source-maps packages/core/dist/cli.js",
+    "dev:cli": "tsx packages/core/src/cli.ts",
+    "dev:desktop": "electron ./apps/desktop/dist/main.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "^36.2.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,18 +1,29 @@
 import { JsonHttpProvider } from "./json-http-provider.js";
+import type { ProviderCapabilities } from "../types.js";
 
 interface OllamaProviderOptions {
   baseUrl: string;
   model: string;
+  timeoutMs: number;
 }
 
 export class OllamaProvider extends JsonHttpProvider {
   readonly kind = "ollama" as const;
+  readonly capabilities: ProviderCapabilities = {
+    strictJson: true,
+    streaming: false,
+    toolUse: "json",
+    notes: "Local HTTP adapter using Ollama /api/generate with JSON format."
+  };
 
   constructor(private readonly options: OllamaProviderOptions) {
     super();
   }
 
   protected async requestDecision(prompt: string): Promise<unknown> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
+
     const response = await fetch(`${this.options.baseUrl}/api/generate`, {
       method: "POST",
       headers: {
@@ -23,8 +34,9 @@ export class OllamaProvider extends JsonHttpProvider {
         prompt,
         stream: false,
         format: "json"
-      })
-    });
+      }),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
 
     if (!response.ok) {
       throw new Error(`Ollama request failed with status ${response.status}.`);

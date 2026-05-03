@@ -1,63 +1,4 @@
-type ProviderKind = "mock" | "ollama" | "openai-compatible";
-
-interface ToolResult {
-  ok: boolean;
-  message: string;
-  data?: unknown;
-}
-
-interface AgentAction {
-  tool: string;
-  input: Record<string, unknown>;
-}
-
-interface AgentStepRecord {
-  step: number;
-  thought: string;
-  action: AgentAction;
-  observation: ToolResult;
-  timestamp: string;
-}
-
-type AgentEvent =
-  | {
-      type: "run_started";
-      goal: string;
-      provider: ProviderKind;
-      timestamp: string;
-    }
-  | {
-      type: "step_completed";
-      record: AgentStepRecord;
-    }
-  | {
-      type: "run_completed";
-      completed: boolean;
-      summary: string;
-      steps: number;
-      timestamp: string;
-    }
-  | {
-      type: "run_failed";
-      error: string;
-      timestamp: string;
-    };
-
-interface AgentRunSummary {
-  completed: boolean;
-  summary: string;
-  history: AgentStepRecord[];
-}
-
-declare global {
-  interface Window {
-    agentDesktop: {
-      run(goal: string, provider: ProviderKind): Promise<AgentRunSummary>;
-      stop(): Promise<{ stopped: boolean }>;
-      onEvent(listener: (event: AgentEvent) => void): void;
-    };
-  }
-}
+import type { AgentEvent, AgentRunSummary, ProviderKind } from "@sandboxed-agent/core";
 
 const goalInput = document.querySelector<HTMLTextAreaElement>("#goal-input");
 const providerSelect = document.querySelector<HTMLSelectElement>("#provider-select");
@@ -74,7 +15,7 @@ const summaryText = document.querySelector<HTMLElement>("#summary-text");
 const summaryBadge = document.querySelector<HTMLElement>("#summary-badge");
 const summaryCard = document.querySelector<HTMLElement>("#summary-card");
 const runStatusPill = document.querySelector<HTMLElement>("#run-status-pill");
-const inlineNote = document.querySelector<HTMLElement>("#inline-note");
+const notice = document.querySelector<HTMLElement>("#notice");
 
 let eventTotal = 0;
 let stepTotal = 0;
@@ -104,7 +45,7 @@ const elements = {
   summaryBadge: ensureElement(summaryBadge, "summary-badge"),
   summaryCard: ensureElement(summaryCard, "summary-card"),
   runStatusPill: ensureElement(runStatusPill, "run-status-pill"),
-  inlineNote: ensureElement(inlineNote, "inline-note")
+  notice: ensureElement(notice, "notice")
 };
 
 function formatTime(timestamp: string): string {
@@ -154,12 +95,12 @@ function clearTimeline(): void {
   elements.timeline.innerHTML = "";
   elements.timeline.append(elements.emptyState);
   elements.runStatusPill.textContent = "Idle";
-  elements.inlineNote.textContent =
-    "Use the mock provider for deterministic local testing. Cloud and local HTTP providers can be swapped in later without changing the core loop.";
+  elements.notice.textContent = "";
+  elements.notice.classList.remove("notice-error");
   setResultState("Idle", "idle");
   setSummaryState(
     "No run has started yet",
-    "The feed on the right will capture the agent's event stream once a run starts.",
+    "The feed will populate when a run starts.",
     "Idle",
     "idle"
   );
@@ -211,7 +152,11 @@ function appendTimelineEntry(
       <span class="event-meta">${escapeHtml(meta)}</span>
     </div>
     <p class="event-body">${escapeHtml(body)}</p>
-    ${details.length > 0 ? `<div class="event-detail-grid">${detailMarkup}</div>` : ""}
+    ${
+      details.length > 0
+        ? `<details class="entry-details"><summary>Details</summary><div class="event-detail-grid">${detailMarkup}</div></details>`
+        : ""
+    }
   `;
 
   elements.timeline.append(entry);
@@ -225,7 +170,7 @@ function handleEvent(event: AgentEvent): void {
   switch (event.type) {
     case "run_started":
       elements.runStatusPill.textContent = "Running";
-      elements.inlineNote.textContent = `Provider: ${event.provider}. Goal submitted at ${formatTime(event.timestamp)}.`;
+      elements.notice.textContent = `Provider: ${event.provider} · Policy: ${event.policyName ?? "unknown"} · Run: ${event.runId}`;
       setResultState("Running", "running");
       setSummaryState(
         "Agent run in progress",
@@ -237,7 +182,11 @@ function handleEvent(event: AgentEvent): void {
         "Run started",
         formatTime(event.timestamp),
         event.goal,
-        [{ label: "Provider", value: event.provider }]
+        [
+          { label: "Run", value: event.runId },
+          { label: "Provider", value: event.provider },
+          { label: "Policy", value: `${event.policyName ?? ""} ${event.policyVersion ?? ""}`.trim() }
+        ]
       );
       break;
     case "step_completed":
@@ -268,19 +217,24 @@ function handleEvent(event: AgentEvent): void {
         event.completed ? "Run completed" : "Run stopped",
         formatTime(event.timestamp),
         event.summary,
-        [{ label: "Steps", value: String(event.steps) }],
+        [
+          { label: "Run", value: event.runId },
+          { label: "Steps", value: String(event.steps) }
+        ],
         event.completed ? "success" : "failure"
       );
       break;
     case "run_failed":
       elements.runStatusPill.textContent = "Failed";
       setResultState("Failed", "failure");
+      elements.notice.textContent = event.code ? `${event.code}: ${event.error}` : event.error;
+      elements.notice.classList.add("notice-error");
       setSummaryState("Run failed", event.error, "Failed", "warning");
       appendTimelineEntry(
         "Run failed",
         formatTime(event.timestamp),
         event.error,
-        [],
+        event.details ? [{ label: "Details", value: renderObject(event.details) }] : [],
         "failure"
       );
       break;
@@ -314,7 +268,8 @@ async function startRun(): Promise<void> {
 }
 
 async function stopRun(): Promise<void> {
-  elements.inlineNote.textContent = "Stop requested. The current run will halt at the next safe boundary.";
+  elements.notice.textContent = "Stop requested. The current run will halt at the next safe boundary.";
+  elements.notice.classList.remove("notice-error");
   await window.agentDesktop.stop();
 }
 

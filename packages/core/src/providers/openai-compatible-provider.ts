@@ -1,20 +1,37 @@
 import { JsonHttpProvider } from "./json-http-provider.js";
+import type { ProviderCapabilities } from "../types.js";
 
 interface OpenAiCompatibleProviderOptions {
   baseUrl: string;
   apiKey: string;
   model: string;
+  timeoutMs: number;
+}
+
+function normalizeOpenAiBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
 }
 
 export class OpenAiCompatibleProvider extends JsonHttpProvider {
   readonly kind = "openai-compatible" as const;
+  readonly capabilities: ProviderCapabilities = {
+    strictJson: true,
+    streaming: false,
+    toolUse: "json",
+    notes: "OpenAI-style /v1/chat/completions adapter using response_format=json_object."
+  };
 
   constructor(private readonly options: OpenAiCompatibleProviderOptions) {
     super();
   }
 
   protected async requestDecision(prompt: string): Promise<unknown> {
-    const response = await fetch(`${this.options.baseUrl}/chat/completions`, {
+    const baseUrl = normalizeOpenAiBaseUrl(this.options.baseUrl);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -35,11 +52,18 @@ export class OpenAiCompatibleProvider extends JsonHttpProvider {
         response_format: {
           type: "json_object"
         }
-      })
-    });
+      }),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
 
     if (!response.ok) {
-      throw new Error(`OpenAI-compatible request failed with status ${response.status}.`);
+      const hint =
+        response.status === 401 || response.status === 403
+          ? "Check OPENAI_API_KEY."
+          : response.status === 404
+            ? "Check OPENAI_BASE_URL (expected OpenAI-style /v1 endpoints)."
+            : "Check OPENAI_BASE_URL and network connectivity.";
+      throw new Error(`OpenAI-compatible request failed with status ${response.status}. ${hint}`);
     }
 
     const payload = (await response.json()) as {

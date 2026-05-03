@@ -81,16 +81,21 @@ export interface ToolResult {
 export type AgentEvent =
   | {
       type: "run_started";
+      runId: string;
       goal: string;
       provider: ProviderKind;
+      policyName?: string;
+      policyVersion?: string;
       timestamp: string;
     }
   | {
       type: "step_completed";
+      runId: string;
       record: AgentStepRecord;
     }
   | {
       type: "run_completed";
+      runId: string;
       completed: boolean;
       summary: string;
       steps: number;
@@ -98,12 +103,24 @@ export type AgentEvent =
     }
   | {
       type: "run_failed";
+      runId: string;
+      code?: string;
       error: string;
+      details?: unknown;
       timestamp: string;
     };
 
+export interface ProviderCapabilities {
+  strictJson: boolean;
+  streaming: boolean;
+  toolUse: "none" | "json";
+  maxContextTokens?: number;
+  notes?: string;
+}
+
 export interface ModelProvider {
   readonly kind: ProviderKind;
+  readonly capabilities: ProviderCapabilities;
   decide(context: AgentStepContext): Promise<AgentDecision>;
 }
 
@@ -129,4 +146,6 @@ export interface CommandExecution {
 export interface AgentRunOptions {
   signal?: AbortSignal;
   onEvent?: (event: AgentEvent) => void;
+  policy?: import("./policy/types.js").PolicyProfile | string;
+  runId?: string;
 }

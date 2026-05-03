@@ -1,4 +1,6 @@
 export * from "./agent.js";
+export * from "./config.js";
+export * from "./config-file.js";
 export * from "./provider-prompt.js";
 export * from "./providers/factory.js";
 export * from "./providers/mock-provider.js";

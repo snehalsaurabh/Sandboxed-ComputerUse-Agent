@@ -2,6 +2,7 @@ import type {
   AgentDecision,
   AgentStepContext,
   ModelProvider,
+  ProviderCapabilities,
   WriteFileAction
 } from "../types.js";
 
@@ -25,6 +26,12 @@ function helloWorldProgram(goal: string): string | null {
 
 export class MockProvider implements ModelProvider {
   readonly kind = "mock" as const;
+  readonly capabilities: ProviderCapabilities = {
+    strictJson: true,
+    streaming: false,
+    toolUse: "json",
+    notes: "Deterministic provider for local development and UI testing."
+  };
 
   async decide(context: AgentStepContext): Promise<AgentDecision> {
     const last = context.history.at(-1);

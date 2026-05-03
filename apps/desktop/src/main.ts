@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createProvider, runAgent } from "@sandboxed-agent/core";
+import { createProviderFromConfig, loadRuntimeConfigFromEnv, runAgent, validateRuntimeConfig } from "@sandboxed-agent/core";
 import type { AgentEvent, AgentRunSummary, ProviderKind } from "@sandboxed-agent/core";
 
 interface RunRequest {
@@ -44,19 +44,23 @@ app.whenReady().then(() => {
       throw new Error("An agent run is already in progress.");
     }
 
+    const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
     try {
       currentRunAbortController = new AbortController();
-      const provider = createProvider(request.provider, {
-        ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
-        ollamaModel: process.env.OLLAMA_MODEL,
-        openAiBaseUrl: process.env.OPENAI_BASE_URL,
-        openAiApiKey: process.env.OPENAI_API_KEY,
-        openAiModel: process.env.OPENAI_MODEL
+      const baseConfig = loadRuntimeConfigFromEnv(process.env);
+      const merged = validateRuntimeConfig({
+        provider: {
+          ...baseConfig.provider,
+          kind: request.provider
+        } as typeof baseConfig.provider
       });
+      const provider = createProviderFromConfig(merged.provider);
 
       currentRunPromise = runAgent(request.goal, provider, {}, {
         signal: currentRunAbortController.signal,
-        onEvent: emitToRenderer
+        onEvent: emitToRenderer,
+        runId
       });
 
       return await currentRunPromise;
@@ -64,6 +68,7 @@ app.whenReady().then(() => {
       const message = error instanceof Error ? error.message : "Unknown agent run error.";
       emitToRenderer({
         type: "run_failed",
+        runId,
         error: message,
         timestamp: new Date().toISOString()
       });

@@ -3,11 +3,16 @@ import type {
   AgentDecision,
   AgentStepContext,
   ModelProvider,
+  ProviderCapabilities,
   ProviderKind
 } from "../types.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function truncate(value: string, max = 500): string {
+  return value.length <= max ? value : `${value.slice(0, max)}…`;
 }
 
 function validateDecision(value: unknown): AgentDecision {
@@ -26,12 +31,18 @@ function validateDecision(value: unknown): AgentDecision {
 
 export abstract class JsonHttpProvider implements ModelProvider {
   abstract readonly kind: ProviderKind;
+  abstract readonly capabilities: ProviderCapabilities;
 
   protected abstract requestDecision(prompt: string): Promise<unknown>;
 
   async decide(context: AgentStepContext): Promise<AgentDecision> {
     const prompt = buildProviderPrompt(context);
-    const raw = await this.requestDecision(prompt);
-    return validateDecision(raw);
+    try {
+      const raw = await this.requestDecision(prompt);
+      return validateDecision(raw);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown provider error.";
+      throw new Error(`[${this.kind}] ${truncate(message)}`);
+    }
   }
 }

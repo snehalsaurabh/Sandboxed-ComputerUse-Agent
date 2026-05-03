@@ -6,6 +6,8 @@ import type {
   AgentRunSummary,
   ModelProvider
 } from "./types.js";
+import { getPolicyProfile } from "./policy/profiles.js";
+import type { PolicyProfile } from "./policy/types.js";
 
 export const defaultAgentConfig: AgentConfig = {
   maxSteps: 6,
@@ -20,17 +22,35 @@ export async function runAgent(
   config: Partial<AgentConfig> = {},
   options: AgentRunOptions = {}
 ): Promise<AgentRunSummary> {
+  const policy: PolicyProfile | undefined =
+    typeof options.policy === "string"
+      ? getPolicyProfile(options.policy)
+      : options.policy
+        ? options.policy
+        : getPolicyProfile(undefined);
+
   const resolvedConfig: AgentConfig = {
     ...defaultAgentConfig,
+    ...(policy
+      ? {
+          maxSteps: policy.maxSteps,
+          commandTimeoutMs: policy.commandTimeoutMs,
+          allowedCommands: policy.allowedCommands
+        }
+      : {}),
     ...config
   };
   const history: AgentRunSummary["history"] = [];
   const emit = options.onEvent;
+  const runId = options.runId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
   emit?.({
     type: "run_started",
+    runId,
     goal,
     provider: provider.kind,
+    policyName: policy?.name,
+    policyVersion: policy?.version,
     timestamp: new Date().toISOString()
   });
 
@@ -39,6 +59,7 @@ export async function runAgent(
       const summary = "Run stopped by user.";
       emit?.({
         type: "run_completed",
+        runId,
         completed: false,
         summary,
         steps: history.length,
@@ -70,6 +91,7 @@ export async function runAgent(
     history.push(record);
     emit?.({
       type: "step_completed",
+      runId,
       record
     });
 
@@ -77,6 +99,7 @@ export async function runAgent(
       const summary = decision.action.input.summary;
       emit?.({
         type: "run_completed",
+        runId,
         completed: true,
         summary,
         steps: history.length,
@@ -94,6 +117,7 @@ export async function runAgent(
   const summary = "Stopped because the maximum step budget was reached.";
   emit?.({
     type: "run_completed",
+    runId,
     completed: false,
     summary,
     steps: history.length,

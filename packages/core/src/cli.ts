@@ -1,13 +1,16 @@
 import path from "node:path";
 import process from "node:process";
-import { createProvider } from "./providers/factory.js";
+import { loadRuntimeConfigFromEnv, validateRuntimeConfig } from "./config.js";
+import { loadRuntimeConfigFromFile } from "./config-file.js";
+import { createProviderFromConfig } from "./providers/factory.js";
 import { runAgent } from "./agent.js";
 import type { ProviderKind } from "./types.js";
 
 interface CliOptions {
   goal: string;
-  provider: ProviderKind;
+  provider?: ProviderKind;
   workspaceRoot?: string;
+  configPath?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -29,6 +32,12 @@ function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
+    if (token === "--config" && next) {
+      options.configPath = next;
+      index += 1;
+      continue;
+    }
+
     if (token === "--workspace" && next) {
       options.workspaceRoot = next;
       index += 1;
@@ -41,20 +50,23 @@ function parseArgs(argv: string[]): CliOptions {
 
   return {
     goal: options.goal,
-    provider: options.provider ?? "mock",
+    provider: options.provider,
     workspaceRoot: options.workspaceRoot
   };
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
-  const provider = createProvider(options.provider, {
-    ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
-    ollamaModel: process.env.OLLAMA_MODEL,
-    openAiBaseUrl: process.env.OPENAI_BASE_URL,
-    openAiApiKey: process.env.OPENAI_API_KEY,
-    openAiModel: process.env.OPENAI_MODEL
+  const fromEnv = loadRuntimeConfigFromEnv(process.env);
+  const fromFile = options.configPath ? await loadRuntimeConfigFromFile(options.configPath) : undefined;
+  const merged = validateRuntimeConfig({
+    provider: {
+      ...(fromFile?.provider ?? fromEnv.provider),
+      kind: options.provider ?? (fromFile?.provider.kind ?? fromEnv.provider.kind)
+    } as typeof fromEnv.provider
   });
+
+  const provider = createProviderFromConfig(merged.provider);
 
   const summary = await runAgent(
     options.goal,

@@ -1,3 +1,4 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/snehalsaurabh/Sandboxed-ComputerUse-Agent)
 # Sandboxed Local AI Agent
 
 Local-first, safety-constrained **TypeScript** agent runtime that translates a goal into **bounded tool actions** and emits a structured, auditable event stream.

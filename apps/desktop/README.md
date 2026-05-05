@@ -64,5 +64,5 @@ npm.cmd run dev:desktop
 - The desktop app currently loads its HTML and CSS from `apps/desktop/src` and the compiled Electron scripts from `apps/desktop/dist`.
 - Use `Ctrl+Enter` inside the goal field to start a run quickly.
 - The `Stop` button cancels the run at the next safe boundary in the agent loop.
-- Browser automation is not part of this phase yet.
+- Browser automation is available as an optional, policy-gated capability (see `docs/browser-automation.md`).
 

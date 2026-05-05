@@ -1,4 +1,3 @@
-import { executeAction } from "./sandbox.js";
 import type {
   AgentConfig,
   AgentEvent,
@@ -43,6 +42,7 @@ export async function runAgent(
   const history: AgentRunSummary["history"] = [];
   const emit = options.onEvent;
   const runId = options.runId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const execute = options.toolExecutor ?? (await import("./sandbox.js")).executeAction;
 
   emit?.({
     type: "run_started",
@@ -79,7 +79,7 @@ export async function runAgent(
       history
     });
 
-    const observation = await executeAction(decision.action, resolvedConfig);
+    const observation = await execute(decision.action, resolvedConfig);
     const record = {
       step,
       thought: decision.thought,

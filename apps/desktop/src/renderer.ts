@@ -119,6 +119,10 @@ function renderObject(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function revealButton(pathValue: string): string {
+  return `<button class="button button-secondary" data-reveal="${escapeHtml(pathValue)}" type="button">Open folder</button>`;
+}
+
 function appendTimelineEntry(
   title: string,
   meta: string,
@@ -140,7 +144,11 @@ function appendTimelineEntry(
       (detail) => `
         <div class="event-detail">
           <span class="event-detail-label">${escapeHtml(detail.label)}</span>
-          <pre>${escapeHtml(detail.value)}</pre>
+          ${
+            detail.label === "Reveal"
+              ? detail.value
+              : `<pre>${escapeHtml(detail.value)}</pre>`
+          }
         </div>
       `
     )
@@ -238,6 +246,54 @@ function handleEvent(event: AgentEvent): void {
         "failure"
       );
       break;
+    case "browser_session_started":
+      appendTimelineEntry(
+        "Browser session started",
+        formatTime(event.timestamp),
+        "Playwright session opened.",
+        event.data ? [{ label: "Data", value: renderObject(event.data) }] : []
+      );
+      break;
+    case "browser_navigated":
+      appendTimelineEntry(
+        "Browser navigated",
+        formatTime(event.timestamp),
+        "Navigation completed.",
+        event.data ? [{ label: "Data", value: renderObject(event.data) }] : []
+      );
+      break;
+    case "browser_action_performed":
+      appendTimelineEntry(
+        "Browser action",
+        formatTime(event.timestamp),
+        "Action performed.",
+        event.data ? [{ label: "Data", value: renderObject(event.data) }] : []
+      );
+      break;
+    case "browser_artifact_created": {
+      const payload = event.data as { path?: string } | undefined;
+      const pathValue = payload?.path;
+      appendTimelineEntry(
+        "Browser artifact",
+        formatTime(event.timestamp),
+        pathValue ? `Artifact written: ${pathValue}` : "Artifact created.",
+        event.data
+          ? [
+              { label: "Data", value: renderObject(event.data) },
+              ...(pathValue ? [{ label: "Reveal", value: revealButton(pathValue) }] : [])
+            ]
+          : []
+      );
+      break;
+    }
+    case "browser_session_closed":
+      appendTimelineEntry(
+        "Browser session closed",
+        formatTime(event.timestamp),
+        "Playwright session closed.",
+        event.data ? [{ label: "Data", value: renderObject(event.data) }] : []
+      );
+      break;
     default:
       break;
   }
@@ -275,6 +331,16 @@ async function stopRun(): Promise<void> {
 
 window.agentDesktop.onEvent((event) => {
   handleEvent(event);
+});
+
+elements.timeline.addEventListener("click", (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) {
+    return;
+  }
+  if (target instanceof HTMLButtonElement && target.dataset.reveal) {
+    void window.agentDesktop.revealInFolder(target.dataset.reveal);
+  }
 });
 
 elements.startButton.addEventListener("click", () => {

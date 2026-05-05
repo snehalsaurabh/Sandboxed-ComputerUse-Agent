@@ -16,7 +16,9 @@
     "types": ["node"],
     "paths": {
       "@sandboxed-agent/core": ["./packages/core/src/index.ts"],
-      "@sandboxed-agent/core/*": ["./packages/core/src/*"]
+      "@sandboxed-agent/core/*": ["./packages/core/src/*"],
+      "@sandboxed-agent/browser": ["./packages/browser/src/index.ts"],
+      "@sandboxed-agent/browser/*": ["./packages/browser/src/*"]
     }
   }
 }

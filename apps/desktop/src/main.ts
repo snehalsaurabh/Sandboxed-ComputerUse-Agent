@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import { shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createProviderFromConfig, loadRuntimeConfigFromEnv, runAgent, validateRuntimeConfig } from "@sandboxed-agent/core";
 import type { AgentEvent, AgentRunSummary, ProviderKind } from "@sandboxed-agent/core";
+import { createBrowserToolExecutor, defaultBrowserPolicy } from "@sandboxed-agent/browser";
 
 interface RunRequest {
   goal: string;
@@ -17,6 +19,19 @@ let currentRunPromise: Promise<AgentRunSummary> | null = null;
 
 function emitToRenderer(event: AgentEvent): void {
   mainWindow?.webContents.send("agent:event", event);
+}
+
+function browserPolicyFromEnv(): typeof defaultBrowserPolicy {
+  const enabled = process.env.BROWSER_ENABLED === "1" || process.env.BROWSER_ENABLED === "true";
+  const allowedOrigins = (process.env.BROWSER_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return {
+    ...defaultBrowserPolicy,
+    enabled,
+    allowedOrigins
+  };
 }
 
 function createMainWindow(): BrowserWindow {
@@ -57,10 +72,20 @@ app.whenReady().then(() => {
       });
       const provider = createProviderFromConfig(merged.provider);
 
+      const browserPolicy = browserPolicyFromEnv();
+      const artifactsRootDir = process.env.AGENT_AUDIT_DIR ?? path.resolve(process.cwd(), ".agent-runs");
+      const browserExecutor = createBrowserToolExecutor({
+        runId,
+        policy: browserPolicy,
+        artifactsRootDir,
+        emit: (evt) => emitToRenderer(evt as unknown as AgentEvent)
+      });
+
       currentRunPromise = runAgent(request.goal, provider, {}, {
         signal: currentRunAbortController.signal,
         onEvent: emitToRenderer,
-        runId
+        runId,
+        toolExecutor: browserExecutor.execute
       });
 
       return await currentRunPromise;
@@ -86,6 +111,15 @@ app.whenReady().then(() => {
 
     currentRunAbortController.abort();
     return { stopped: true };
+  });
+
+  ipcMain.handle("agent:revealInFolder", async (_event, targetPath: string) => {
+    if (!targetPath) {
+      return { revealed: false };
+    }
+
+    shell.showItemInFolder(targetPath);
+    return { revealed: true };
   });
 });
 

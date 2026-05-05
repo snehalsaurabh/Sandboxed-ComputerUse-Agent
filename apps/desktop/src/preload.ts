@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld("agentDesktop", {
   stop(): Promise<{ stopped: boolean }> {
     return ipcRenderer.invoke("agent:stop");
   },
+  revealInFolder(targetPath: string): Promise<{ revealed: boolean }> {
+    return ipcRenderer.invoke("agent:revealInFolder", targetPath);
+  },
   onEvent(listener: (event: AgentEvent) => void): void {
     ipcRenderer.on("agent:event", (_ipcEvent, payload: AgentEvent) => {
       listener(payload);

@@ -2,7 +2,19 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 export type ProviderKind = "mock" | "ollama" | "openai-compatible";
 
-export type ToolName = "run_command" | "read_file" | "write_file" | "finish";
+export type ToolName =
+  | "run_command"
+  | "read_file"
+  | "write_file"
+  | "finish"
+  | "browser_open"
+  | "browser_goto"
+  | "browser_click"
+  | "browser_type"
+  | "browser_wait_for"
+  | "browser_extract_text"
+  | "browser_screenshot"
+  | "browser_close";
 
 export interface AgentConfig {
   maxSteps: number;
@@ -39,7 +51,15 @@ export type AgentAction =
   | FinishAction
   | RunCommandAction
   | ReadFileAction
-  | WriteFileAction;
+  | WriteFileAction
+  | BrowserOpenAction
+  | BrowserGotoAction
+  | BrowserClickAction
+  | BrowserTypeAction
+  | BrowserWaitForAction
+  | BrowserExtractTextAction
+  | BrowserScreenshotAction
+  | BrowserCloseAction;
 
 export interface FinishAction {
   tool: "finish";
@@ -70,6 +90,67 @@ export interface WriteFileAction {
     path: string;
     content: string;
   };
+}
+
+export interface BrowserOpenAction {
+  tool: "browser_open";
+  input: {
+    headless?: boolean;
+  };
+}
+
+export interface BrowserGotoAction {
+  tool: "browser_goto";
+  input: {
+    url: string;
+  };
+}
+
+export interface BrowserClickAction {
+  tool: "browser_click";
+  input: {
+    selector: string;
+    strict?: boolean;
+  };
+}
+
+export interface BrowserTypeAction {
+  tool: "browser_type";
+  input: {
+    selector: string;
+    text: string;
+    clear?: boolean;
+  };
+}
+
+export interface BrowserWaitForAction {
+  tool: "browser_wait_for";
+  input: {
+    selector: string;
+    state?: "attached" | "visible" | "hidden" | "detached";
+    timeoutMs?: number;
+  };
+}
+
+export interface BrowserExtractTextAction {
+  tool: "browser_extract_text";
+  input: {
+    selector: string;
+    maxChars?: number;
+  };
+}
+
+export interface BrowserScreenshotAction {
+  tool: "browser_screenshot";
+  input: {
+    name?: string;
+    fullPage?: boolean;
+  };
+}
+
+export interface BrowserCloseAction {
+  tool: "browser_close";
+  input: Record<string, never>;
 }
 
 export interface ToolResult {
@@ -108,6 +189,36 @@ export type AgentEvent =
       error: string;
       details?: unknown;
       timestamp: string;
+    }
+  | {
+      type: "browser_session_started";
+      runId: string;
+      timestamp: string;
+      data?: unknown;
+    }
+  | {
+      type: "browser_navigated";
+      runId: string;
+      timestamp: string;
+      data?: unknown;
+    }
+  | {
+      type: "browser_action_performed";
+      runId: string;
+      timestamp: string;
+      data?: unknown;
+    }
+  | {
+      type: "browser_artifact_created";
+      runId: string;
+      timestamp: string;
+      data?: unknown;
+    }
+  | {
+      type: "browser_session_closed";
+      runId: string;
+      timestamp: string;
+      data?: unknown;
     };
 
 export interface ProviderCapabilities {
@@ -148,4 +259,5 @@ export interface AgentRunOptions {
   onEvent?: (event: AgentEvent) => void;
   policy?: import("./policy/types.js").PolicyProfile | string;
   runId?: string;
+  toolExecutor?: (action: AgentAction, config: AgentConfig) => Promise<ToolResult>;
 }

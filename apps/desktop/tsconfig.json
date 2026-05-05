@@ -6,8 +6,9 @@
     "composite": true
   },
   "references": [
-    { "path": "../../packages/core" }
+    { "path": "../../packages/core" },
+    { "path": "../../packages/browser" }
   ],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "../../global.d.ts"]
 }
 

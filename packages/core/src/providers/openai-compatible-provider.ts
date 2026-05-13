@@ -10,6 +10,10 @@ interface OpenAiCompatibleProviderOptions {
 
 function normalizeOpenAiBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/+$/, "");
+  // Gemini's OpenAI-compatible REST API uses .../v1beta/openai/chat/completions (no extra /v1 segment).
+  if (/generativelanguage\.googleapis\.com\/v1beta\/openai/i.test(trimmed)) {
+    return trimmed;
+  }
   return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
 }
 

@@ -1,6 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
-export type ProviderKind = "mock" | "ollama" | "openai-compatible";
+export type ProviderKind = "mock" | "ollama" | "openai-compatible" | "gemini";
 
 export type ToolName =
   | "run_command"

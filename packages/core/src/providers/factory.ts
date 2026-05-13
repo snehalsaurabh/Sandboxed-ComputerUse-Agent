@@ -1,7 +1,7 @@
 import { MockProvider } from "./mock-provider.js";
 import { OllamaProvider } from "./ollama-provider.js";
 import { OpenAiCompatibleProvider } from "./openai-compatible-provider.js";
-import { validateRuntimeConfig, type ProviderConfig } from "../config.js";
+import { buildProviderConfigForKind, validateRuntimeConfig, type ProviderConfig } from "../config.js";
 import type { ModelProvider, ProviderFactoryOptions, ProviderKind } from "../types.js";
 
 export function createProviderFromConfig(config: ProviderConfig): ModelProvider {
@@ -34,23 +34,25 @@ export function createProvider(
   kind: ProviderKind,
   options: ProviderFactoryOptions = {}
 ): ModelProvider {
-  const config: ProviderConfig =
-    kind === "mock"
-      ? { kind: "mock" }
-      : kind === "ollama"
-        ? {
-            kind: "ollama",
-            baseUrl: options.ollamaBaseUrl ?? "http://127.0.0.1:11434",
-            model: options.ollamaModel ?? "llama3.1",
-            timeoutMs: 30_000
-          }
-        : {
-            kind: "openai-compatible",
-            baseUrl: options.openAiBaseUrl ?? "https://api.openai.com/v1",
-            apiKey: options.openAiApiKey ?? "",
-            model: options.openAiModel ?? "gpt-4o-mini",
-            timeoutMs: 30_000
-          };
-
-  return createProviderFromConfig(config);
+  if (kind === "mock") {
+    return createProviderFromConfig({ kind: "mock" });
+  }
+  if (kind === "ollama") {
+    return createProviderFromConfig({
+      kind: "ollama",
+      baseUrl: options.ollamaBaseUrl ?? "http://127.0.0.1:11434",
+      model: options.ollamaModel ?? "llama3.1",
+      timeoutMs: 120_000
+    });
+  }
+  if (kind === "gemini") {
+    return createProviderFromConfig(buildProviderConfigForKind("gemini", process.env));
+  }
+  return createProviderFromConfig({
+    kind: "openai-compatible",
+    baseUrl: options.openAiBaseUrl ?? "https://api.openai.com/v1",
+    apiKey: options.openAiApiKey ?? "",
+    model: options.openAiModel ?? "gpt-4o-mini",
+    timeoutMs: 30_000
+  });
 }

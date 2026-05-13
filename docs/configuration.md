@@ -11,6 +11,7 @@ Set one of:
 - `AGENT_PROVIDER=mock`
 - `AGENT_PROVIDER=ollama`
 - `AGENT_PROVIDER=openai-compatible`
+- `AGENT_PROVIDER=gemini` (Google Gemini via the same OpenAI-compatible HTTP adapter)
 
 If not set, the default is `mock`.
 
@@ -20,7 +21,7 @@ Environment variables:
 
 - `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
 - `OLLAMA_MODEL` (default `llama3.1`)
-- `OLLAMA_TIMEOUT_MS` (default `30000`)
+- `OLLAMA_TIMEOUT_MS` (default `120000`) — HTTP wait for each `/api/generate` call; raise for 8B models or long outputs (e.g. `300000`).
 
 ## OpenAI-compatible
 
@@ -35,6 +36,17 @@ Notes:
 
 - The adapter calls `POST /v1/chat/completions` and requests strict JSON responses.
 - If you point to a self-hosted OpenAI-compatible endpoint, ensure it supports `response_format: { type: "json_object" }`.
+
+## Gemini (Google)
+
+Selecting `AGENT_PROVIDER=gemini` (or **Gemini (Google)** in the desktop app) builds an `openai-compatible` provider pointed at Google’s OpenAI-compatible base URL. Environment variables:
+
+- `GEMINI_API_KEY` (**required** for Gemini runs)
+- `GEMINI_BASE_URL` (default `https://generativelanguage.googleapis.com/v1beta/openai`)
+- `GEMINI_MODEL` (default `gemini-2.0-flash`)
+- `GEMINI_TIMEOUT_MS` (default `120000`; falls back to `OPENAI_TIMEOUT_MS` if unset)
+
+The adapter uses `POST .../chat/completions` with `Authorization: Bearer <GEMINI_API_KEY>` and requests `response_format: { type: "json_object" }`, matching the OpenAI-compatible path. If a specific model rejects `json_object`, try another Gemini model or file an issue with the failure payload.
 
 ## Browser automation (optional)
 

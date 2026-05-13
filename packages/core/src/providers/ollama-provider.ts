@@ -25,19 +25,39 @@ export class OllamaProvider extends JsonHttpProvider {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
 
-    return fetch(`${this.options.baseUrl}/api/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: this.options.model,
-        prompt,
-        stream: false,
-        format
-      }),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeout));
+    try {
+      const response = await fetch(`${this.options.baseUrl}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: this.options.model,
+          prompt,
+          stream: false,
+          format,
+          // Reduce truncated write_file / long JSON decisions; lower temperature for stabler code.
+          options: {
+            num_predict: 8192,
+            temperature: 0.2
+          }
+        }),
+        signal: controller.signal
+      });
+      return response;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === "AbortError" || /aborted/i.test(error.message))
+      ) {
+        throw new Error(
+          `Ollama request timed out after ${this.options.timeoutMs} ms (or was cancelled). Large models (e.g. llama3.1:8b) and long JSON need more time—set OLLAMA_TIMEOUT_MS in .env (e.g. 300000 for 5 minutes).`
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   protected async requestDecision(prompt: string): Promise<unknown> {

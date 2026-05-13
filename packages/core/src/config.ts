@@ -41,7 +41,7 @@ function pickProviderKind(env: Record<string, string | undefined>): ProviderKind
     return "mock";
   }
 
-  if (raw === "mock" || raw === "ollama" || raw === "openai-compatible") {
+  if (raw === "mock" || raw === "ollama" || raw === "openai-compatible" || raw === "gemini") {
     return raw;
   }
 
@@ -66,7 +66,7 @@ export function buildProviderConfigForKind(
       kind: "ollama",
       baseUrl: env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434",
       model: env.OLLAMA_MODEL ?? "llama3.1",
-      timeoutMs: readInt(env, "OLLAMA_TIMEOUT_MS") ?? 30_000
+      timeoutMs: readInt(env, "OLLAMA_TIMEOUT_MS") ?? 120_000
     };
   }
 
@@ -77,6 +77,18 @@ export function buildProviderConfigForKind(
       apiKey: env.OPENAI_API_KEY ?? "",
       model: env.OPENAI_MODEL ?? "gpt-4o-mini",
       timeoutMs: readInt(env, "OPENAI_TIMEOUT_MS") ?? 30_000
+    };
+  }
+
+  if (kind === "gemini") {
+    return {
+      kind: "openai-compatible",
+      baseUrl:
+        env.GEMINI_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: env.GEMINI_API_KEY ?? "",
+      model: env.GEMINI_MODEL ?? "gemini-2.0-flash",
+      timeoutMs:
+        readInt(env, "GEMINI_TIMEOUT_MS") ?? readInt(env, "OPENAI_TIMEOUT_MS") ?? 120_000
     };
   }
 
@@ -115,16 +127,24 @@ export function validateRuntimeConfig(config: AgentRuntimeConfig): AgentRuntimeC
 
   if (kind === "openai-compatible") {
     if (!config.provider.baseUrl) {
-      throw new Error("OPENAI_BASE_URL is required for openai-compatible provider mode.");
+      throw new Error(
+        "Provider baseUrl is empty (set OPENAI_BASE_URL, or GEMINI_BASE_URL when using Gemini)."
+      );
     }
     if (!config.provider.apiKey) {
-      throw new Error("OPENAI_API_KEY is required for openai-compatible provider mode.");
+      throw new Error(
+        "Provider API key is empty (set OPENAI_API_KEY, or GEMINI_API_KEY when using AGENT_PROVIDER=gemini)."
+      );
     }
     if (!config.provider.model) {
-      throw new Error("OPENAI_MODEL is required for openai-compatible provider mode.");
+      throw new Error(
+        "Provider model is empty (set OPENAI_MODEL, or GEMINI_MODEL when using AGENT_PROVIDER=gemini)."
+      );
     }
     if (!Number.isFinite(config.provider.timeoutMs) || config.provider.timeoutMs <= 0) {
-      throw new Error("OPENAI_TIMEOUT_MS must be a positive integer (milliseconds).");
+      throw new Error(
+        "HTTP provider timeout must be a positive integer in milliseconds (OPENAI_TIMEOUT_MS or GEMINI_TIMEOUT_MS)."
+      );
     }
     return config;
   }

@@ -1,10 +1,13 @@
 import path from "node:path";
 import process from "node:process";
-import { loadRuntimeConfigFromEnv, validateRuntimeConfig } from "./config.js";
 import { loadRuntimeConfigFromFile } from "./config-file.js";
+import { buildProviderConfigForKind, loadRuntimeConfigFromEnv, validateRuntimeConfig } from "./config.js";
+import { loadWorkspaceEnv } from "./env-bootstrap.js";
 import { createProviderFromConfig } from "./providers/factory.js";
 import { runAgent } from "./agent.js";
 import type { ProviderKind } from "./types.js";
+
+loadWorkspaceEnv();
 
 interface CliOptions {
   goal: string;
@@ -59,11 +62,16 @@ async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const fromEnv = loadRuntimeConfigFromEnv(process.env);
   const fromFile = options.configPath ? await loadRuntimeConfigFromFile(options.configPath) : undefined;
+  const baseProvider = fromFile?.provider ?? fromEnv.provider;
+  const effectiveKind = options.provider ?? baseProvider.kind;
+
+  const providerConfig =
+    baseProvider.kind === effectiveKind
+      ? baseProvider
+      : buildProviderConfigForKind(effectiveKind, process.env);
+
   const merged = validateRuntimeConfig({
-    provider: {
-      ...(fromFile?.provider ?? fromEnv.provider),
-      kind: options.provider ?? (fromFile?.provider.kind ?? fromEnv.provider.kind)
-    } as typeof fromEnv.provider
+    provider: providerConfig
   });
 
   const provider = createProviderFromConfig(merged.provider);

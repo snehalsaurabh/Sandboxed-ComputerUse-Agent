@@ -300,6 +300,16 @@ function handleEvent(event: AgentEvent): void {
 }
 
 async function startRun(): Promise<void> {
+  if (!("agentDesktop" in window) || !window.agentDesktop) {
+    setSummaryState(
+      "Desktop bridge unavailable",
+      "Preload did not expose window.agentDesktop. Rebuild and check the DevTools console.",
+      "Error",
+      "warning"
+    );
+    return;
+  }
+
   const goal = elements.goalInput.value.trim();
   const provider = elements.providerSelect.value as ProviderKind;
 
@@ -324,18 +334,18 @@ async function startRun(): Promise<void> {
 }
 
 async function stopRun(): Promise<void> {
+  if (!window.agentDesktop) {
+    return;
+  }
+
   elements.notice.textContent = "Stop requested. The current run will halt at the next safe boundary.";
   elements.notice.classList.remove("notice-error");
   await window.agentDesktop.stop();
 }
 
-window.agentDesktop.onEvent((event) => {
-  handleEvent(event);
-});
-
 elements.timeline.addEventListener("click", (event: MouseEvent) => {
   const target = event.target as HTMLElement | null;
-  if (!target) {
+  if (!target || !window.agentDesktop) {
     return;
   }
   if (target instanceof HTMLButtonElement && target.dataset.reveal) {
@@ -367,6 +377,23 @@ elements.goalInput.addEventListener("keydown", (event) => {
 });
 
 clearTimeline();
+
+if (!window.agentDesktop) {
+  elements.startButton.disabled = true;
+  elements.stopButton.disabled = true;
+  elements.resetButton.disabled = true;
+  setSummaryState(
+    "Desktop bridge unavailable",
+    "Preload did not expose window.agentDesktop (often caused by a failing preload script under Electron sandboxing). Rebuild the app, then check View → Toggle Developer Tools for errors.",
+    "Error",
+    "warning"
+  );
+  setResultState("Bridge missing", "failure");
+} else {
+  window.agentDesktop.onEvent((event) => {
+    handleEvent(event);
+  });
+}
 
 export {};
 

@@ -1,3 +1,4 @@
+import { AGENT_DECISION_JSON_SCHEMA } from "./agent-decision-json-schema.js";
 import { JsonHttpProvider } from "./json-http-provider.js";
 import type { ProviderCapabilities } from "../types.js";
 
@@ -13,18 +14,18 @@ export class OllamaProvider extends JsonHttpProvider {
     strictJson: true,
     streaming: false,
     toolUse: "json",
-    notes: "Local HTTP adapter using Ollama /api/generate with JSON format."
+    notes: "Local HTTP adapter using Ollama /api/generate with structured JSON (schema) and json fallback."
   };
 
   constructor(private readonly options: OllamaProviderOptions) {
     super();
   }
 
-  protected async requestDecision(prompt: string): Promise<unknown> {
+  private async postGenerate(prompt: string, format: unknown): Promise<Response> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
 
-    const response = await fetch(`${this.options.baseUrl}/api/generate`, {
+    return fetch(`${this.options.baseUrl}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -33,10 +34,18 @@ export class OllamaProvider extends JsonHttpProvider {
         model: this.options.model,
         prompt,
         stream: false,
-        format: "json"
+        format
       }),
       signal: controller.signal
     }).finally(() => clearTimeout(timeout));
+  }
+
+  protected async requestDecision(prompt: string): Promise<unknown> {
+    let response = await this.postGenerate(prompt, AGENT_DECISION_JSON_SCHEMA);
+
+    if (!response.ok) {
+      response = await this.postGenerate(prompt, "json");
+    }
 
     if (!response.ok) {
       throw new Error(`Ollama request failed with status ${response.status}.`);
@@ -50,4 +59,3 @@ export class OllamaProvider extends JsonHttpProvider {
     return JSON.parse(payload.response);
   }
 }
-

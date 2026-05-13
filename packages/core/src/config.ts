@@ -48,38 +48,48 @@ function pickProviderKind(env: Record<string, string | undefined>): ProviderKind
   return "mock";
 }
 
-export function loadRuntimeConfigFromEnv(
+/**
+ * Builds a full provider config for the given kind using the same env defaults as
+ * {@link loadRuntimeConfigFromEnv}. Use this when the UI (or CLI flag) selects a provider
+ * independently of `AGENT_PROVIDER`.
+ */
+export function buildProviderConfigForKind(
+  kind: ProviderKind,
   env: Record<string, string | undefined> = process.env
-): AgentRuntimeConfig {
-  const kind = pickProviderKind(env);
+): ProviderConfig {
+  if (kind === "mock") {
+    return { kind: "mock" };
+  }
 
   if (kind === "ollama") {
     return {
-      provider: {
-        kind,
-        baseUrl: env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434",
-        model: env.OLLAMA_MODEL ?? "llama3.1",
-        timeoutMs: readInt(env, "OLLAMA_TIMEOUT_MS") ?? 30_000
-      }
+      kind: "ollama",
+      baseUrl: env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434",
+      model: env.OLLAMA_MODEL ?? "llama3.1",
+      timeoutMs: readInt(env, "OLLAMA_TIMEOUT_MS") ?? 30_000
     };
   }
 
   if (kind === "openai-compatible") {
     return {
-      provider: {
-        kind,
-        baseUrl: env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-        apiKey: env.OPENAI_API_KEY ?? "",
-        model: env.OPENAI_MODEL ?? "gpt-4o-mini",
-        timeoutMs: readInt(env, "OPENAI_TIMEOUT_MS") ?? 30_000
-      }
+      kind: "openai-compatible",
+      baseUrl: env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+      apiKey: env.OPENAI_API_KEY ?? "",
+      model: env.OPENAI_MODEL ?? "gpt-4o-mini",
+      timeoutMs: readInt(env, "OPENAI_TIMEOUT_MS") ?? 30_000
     };
   }
 
+  const exhaustive: never = kind;
+  throw new Error(`Unsupported provider kind: ${String(exhaustive)}`);
+}
+
+export function loadRuntimeConfigFromEnv(
+  env: Record<string, string | undefined> = process.env
+): AgentRuntimeConfig {
+  const kind = pickProviderKind(env);
   return {
-    provider: {
-      kind: "mock"
-    }
+    provider: buildProviderConfigForKind(kind, env)
   };
 }
 
@@ -122,4 +132,3 @@ export function validateRuntimeConfig(config: AgentRuntimeConfig): AgentRuntimeC
   const exhaustiveCheck: never = kind;
   throw new Error(`Unsupported provider kind: ${String(exhaustiveCheck)}`);
 }
-

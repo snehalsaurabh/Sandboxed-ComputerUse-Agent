@@ -15,6 +15,15 @@ function truncate(value: string, max = 500): string {
   return value.length <= max ? value : `${value.slice(0, max)}…`;
 }
 
+function previewUnknown(value: unknown, max = 280): string {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized.length <= max ? serialized : `${serialized.slice(0, max)}…`;
+  } catch {
+    return truncate(String(value), max);
+  }
+}
+
 function validateDecision(value: unknown): AgentDecision {
   if (
     !isRecord(value) ||
@@ -23,7 +32,9 @@ function validateDecision(value: unknown): AgentDecision {
     typeof value.action.tool !== "string" ||
     !isRecord(value.action.input)
   ) {
-    throw new Error("Provider response was not a valid AgentDecision object.");
+    throw new Error(
+      `Provider response was not a valid AgentDecision object. Received: ${previewUnknown(value)}`
+    );
   }
 
   return value as unknown as AgentDecision;

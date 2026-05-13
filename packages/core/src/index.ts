@@ -1,5 +1,6 @@
 export * from "./agent.js";
 export * from "./config.js";
+export * from "./env-bootstrap.js";
 export * from "./config-file.js";
 export * from "./provider-prompt.js";
 export * from "./providers/factory.js";

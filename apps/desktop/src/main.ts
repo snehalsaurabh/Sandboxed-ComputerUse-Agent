@@ -2,14 +2,24 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import { shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createProviderFromConfig, loadRuntimeConfigFromEnv, runAgent, validateRuntimeConfig } from "@sandboxed-agent/core";
-import type { AgentEvent, AgentRunSummary, ProviderKind } from "@sandboxed-agent/core";
+import {
+  buildProviderConfigForKind,
+  createProviderFromConfig,
+  loadWorkspaceEnv,
+  runAgent,
+  validateRuntimeConfig,
+  type AgentEvent,
+  type AgentRunSummary,
+  type ProviderKind
+} from "@sandboxed-agent/core";
 import { createBrowserToolExecutor, defaultBrowserPolicy } from "@sandboxed-agent/browser";
 
 interface RunRequest {
   goal: string;
   provider: ProviderKind;
 }
+
+loadWorkspaceEnv();
 
 let mainWindow: BrowserWindow | null = null;
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -43,7 +53,13 @@ function createMainWindow(): BrowserWindow {
     backgroundColor: "#edf3ee",
     titleBarStyle: "hiddenInset",
     webPreferences: {
-      preload: path.join(currentDir, "preload.js")
+      preload: path.join(currentDir, "preload.js"),
+      // Default `sandbox: true` runs the preload in a restricted context where ESM
+      // `import` often fails; then `contextBridge` never runs and the renderer has no
+      // `window.agentDesktop` (Start appears to do nothing). Match typical dev-desktop setups.
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
     }
   });
 
@@ -63,12 +79,8 @@ app.whenReady().then(() => {
 
     try {
       currentRunAbortController = new AbortController();
-      const baseConfig = loadRuntimeConfigFromEnv(process.env);
       const merged = validateRuntimeConfig({
-        provider: {
-          ...baseConfig.provider,
-          kind: request.provider
-        } as typeof baseConfig.provider
+        provider: buildProviderConfigForKind(request.provider, process.env)
       });
       const provider = createProviderFromConfig(merged.provider);
 

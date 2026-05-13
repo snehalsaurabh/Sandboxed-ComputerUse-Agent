@@ -3,9 +3,9 @@ import type { PolicyProfile } from "./types.js";
 export const policyProfiles: Record<string, PolicyProfile> = {
   "safe-default": {
     name: "safe-default",
-    version: "1.0",
-    maxSteps: 6,
-    commandTimeoutMs: 5_000,
+    version: "1.1",
+    maxSteps: 20,
+    commandTimeoutMs: 15_000,
     allowedCommands: ["node", "python", "python3", "dir"],
     workspaceRootMode: "cwd",
     fileAccess: {
@@ -27,8 +27,8 @@ export const policyProfiles: Record<string, PolicyProfile> = {
   },
   dev: {
     name: "dev",
-    version: "1.0",
-    maxSteps: 12,
+    version: "1.1",
+    maxSteps: 32,
     commandTimeoutMs: 20_000,
     allowedCommands: ["node", "python", "python3", "npm", "npm.cmd", "tsc", "dir", "cmd"],
     workspaceRootMode: "cwd",

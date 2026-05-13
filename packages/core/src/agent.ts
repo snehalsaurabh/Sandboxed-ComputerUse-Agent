@@ -9,9 +9,9 @@ import { getPolicyProfile } from "./policy/profiles.js";
 import type { PolicyProfile } from "./policy/types.js";
 
 export const defaultAgentConfig: AgentConfig = {
-  maxSteps: 6,
+  maxSteps: 20,
   workspaceRoot: process.cwd(),
-  commandTimeoutMs: 5_000,
+  commandTimeoutMs: 15_000,
   allowedCommands: ["node", "python", "python3", "npm", "npm.cmd", "tsc", "dir", "cmd"]
 };
 

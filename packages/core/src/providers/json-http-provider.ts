@@ -25,19 +25,34 @@ function previewUnknown(value: unknown, max = 280): string {
 }
 
 function validateDecision(value: unknown): AgentDecision {
-  if (
-    !isRecord(value) ||
-    typeof value.thought !== "string" ||
-    !isRecord(value.action) ||
-    typeof value.action.tool !== "string" ||
-    !isRecord(value.action.input)
-  ) {
+  if (!isRecord(value) || typeof value.thought !== "string") {
+    throw new Error(
+      `Provider response was not a valid AgentDecision object. Received: ${previewUnknown(value)}`
+    );
+  }
+  if (!isRecord(value.action) || typeof value.action.tool !== "string") {
     throw new Error(
       `Provider response was not a valid AgentDecision object. Received: ${previewUnknown(value)}`
     );
   }
 
-  return value as unknown as AgentDecision;
+  const raw = value.action;
+  // OpenAI/Gemini often omit `input` when it would be `{}` (e.g. browser_open, browser_close).
+  let input: Record<string, unknown>;
+  if (raw.input === undefined || raw.input === null) {
+    input = {};
+  } else if (!isRecord(raw.input)) {
+    throw new Error(
+      `Provider response was not a valid AgentDecision object (action.input must be an object). Received: ${previewUnknown(value)}`
+    );
+  } else {
+    input = raw.input;
+  }
+
+  return {
+    thought: value.thought,
+    action: { tool: raw.tool, input }
+  } as AgentDecision;
 }
 
 export abstract class JsonHttpProvider implements ModelProvider {

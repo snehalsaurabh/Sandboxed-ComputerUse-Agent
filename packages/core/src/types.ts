@@ -120,6 +120,8 @@ export interface BrowserTypeAction {
     selector: string;
     text: string;
     clear?: boolean;
+    /** After typing, press Enter (e.g. submit Wikipedia search from #searchInput). */
+    pressEnter?: boolean;
   };
 }
 

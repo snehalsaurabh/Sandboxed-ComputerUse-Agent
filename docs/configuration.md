@@ -55,7 +55,13 @@ The desktop app supports an optional Playwright browser tool family.
 Environment variables:
 
 - `BROWSER_ENABLED` (`1`/`true` to enable; default disabled)
-- `BROWSER_ALLOWED_ORIGINS` (comma-separated origins)
+- `BROWSER_ALLOWED_ORIGINS` (comma-separated origins). Matching ignores a leading `www.` on the hostname and requires the same scheme and port, so listing `https://www.google.com` also allows `https://google.com` (and vice versa).
+
+**Wikipedia research runs (English):** article and search URLs use **`https://en.wikipedia.org`**. That origin is **not** the same host as `https://www.wikipedia.org` (the multilingual portal). Add at least:
+
+`https://en.wikipedia.org`
+
+If you sometimes start from the portal, add `https://www.wikipedia.org` as well. Then you can drive flows like: open browser → go to `https://en.wikipedia.org/wiki/Special:Search?search=…` → extract `#mw-content-text` → `write_file` a summary under `work/…`.
 
 ## Audit artifacts
 

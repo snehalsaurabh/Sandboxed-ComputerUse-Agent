@@ -66,6 +66,11 @@ export class BrowserController {
     return this.page;
   }
 
+  /** True after {@link open} has created a page (until {@link close}). */
+  isOpen(): boolean {
+    return this.page !== null;
+  }
+
   async close(): Promise<{ tracePath?: string }> {
     if (!this.browser || !this.context) {
       return {};

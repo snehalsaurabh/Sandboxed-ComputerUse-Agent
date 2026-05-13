@@ -40,6 +40,36 @@ export interface BrowserPolicy {
   trace: BrowserTracePolicy;
 }
 
+/**
+ * Lowercase hostname without a leading `www.` so apex and www variants share one allowlist entry.
+ */
+function canonicalHostname(hostname: string): string {
+  const lower = hostname.toLowerCase();
+  return lower.startsWith("www.") ? lower.slice(4) : lower;
+}
+
+function originsRelaxedMatch(request: URL, candidate: URL): boolean {
+  if (request.protocol !== candidate.protocol) {
+    return false;
+  }
+  if (request.port !== candidate.port) {
+    return false;
+  }
+  return canonicalHostname(request.hostname) === canonicalHostname(candidate.hostname);
+}
+
+function tryParseOriginEntry(entry: string): URL | undefined {
+  const trimmed = entry.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  try {
+    return new URL(trimmed);
+  } catch {
+    return undefined;
+  }
+}
+
 export const defaultBrowserPolicy: BrowserPolicy = {
   enabled: false,
   allowedOrigins: [],
@@ -81,7 +111,12 @@ export function isOriginAllowed(url: string, policy: BrowserPolicy): { ok: boole
   }
 
   const origin = parsed.origin;
-  if (policy.denyOrigins?.includes(origin)) {
+  if (
+    policy.denyOrigins?.some((denied) => {
+      const deniedUrl = tryParseOriginEntry(denied);
+      return deniedUrl ? originsRelaxedMatch(parsed, deniedUrl) : denied === origin;
+    })
+  ) {
     return { ok: false, reason: `Origin denied by policy: ${origin}` };
   }
 
@@ -93,7 +128,12 @@ export function isOriginAllowed(url: string, policy: BrowserPolicy): { ok: boole
     return { ok: false, reason: "No allowedOrigins configured for browser policy." };
   }
 
-  if (!policy.allowedOrigins.includes(origin)) {
+  const matches = policy.allowedOrigins.some((entry) => {
+    const allowedUrl = tryParseOriginEntry(entry);
+    return allowedUrl !== undefined && originsRelaxedMatch(parsed, allowedUrl);
+  });
+
+  if (!matches) {
     return { ok: false, reason: `Origin not allowlisted: ${origin}` };
   }
 
